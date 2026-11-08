@@ -28,14 +28,59 @@ jobs:
 
       - name: Install Android SDK components
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "platform-tools"
 
       - name: Build all DPI variants
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK variants
+      - name: Validate APK structure, manifest, alignment and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/*/debug/*.apk)
+          if [ "${#apks[@]}" -ne 3 ]; then
+            echo "Expected exactly 3 APK files, found ${#apks[@]}"
+            printf '%s\\n' "${apks[@]}"
+            exit 1
+          fi
+
+          AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          ZIPALIGN="$ANDROID_HOME/build-tools/35.0.0/zipalign"
+
+          for apk in "${apks[@]}"; do
+            echo "===== Checking $apk ====="
+            test -s "$apk"
+            unzip -t "$apk"
+            badging="$("$AAPT" dump badging "$apk")"
+            printf '%s\\n' "$badging"
+            printf '%s\\n' "$badging" | grep -q "^sdkVersion:'23'$"
+            printf '%s\\n' "$badging" | grep -q "^targetSdkVersion:'28'$"
+            "$APKSIGNER" verify --verbose "$apk"
+            "$ZIPALIGN" -c -v 4 "$apk"
+          done
+
+      - name: Install each APK on Android 9 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 28
+          arch: x86_64
+          profile: tv_1080p
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            for apk in app/build/outputs/apk/*/debug/*.apk; do
+              echo "===== Installing $apk on API 28 ====="
+              adb install -r "$apk"
+            done
+            adb shell pm list packages | grep 'com.mybox.launcher'
+
+      - name: Upload verified APK variants
         uses: actions/upload-artifact@v4
         with:
           name: my-box-dpi-variants
