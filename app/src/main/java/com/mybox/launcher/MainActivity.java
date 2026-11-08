@@ -298,7 +298,7 @@ public class MainActivity extends Activity {
     }
 
     private void launchIntent(Intent i,String title) {
-        try{i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(i);}
+        try{startActivity(i);}
         catch(Exception e){Toast.makeText(this,"Не удалось открыть "+title,Toast.LENGTH_LONG).show();}
     }
 
@@ -314,7 +314,17 @@ public class MainActivity extends Activity {
         catch(Exception e){return "не установлен";}
     }
 
-    private void openLauncherSettings() {\n        String[] options={"Выбрать VPN-приложение","Управление избранным","Обновить список приложений","Назначить MY BOX главным экраном"};\n        new AlertDialog.Builder(this).setTitle("Настройки MY BOX").setItems(options,(dialog,which)->{\n            if(which==0) chooseVpn();\n            else if(which==1) showAppPicker();\n            else if(which==2){loadApps();refreshContent();updateStatuses();Toast.makeText(this,"Список приложений обновлён",Toast.LENGTH_SHORT).show();}\n            else if(which==3) openHomeSettings();\n        }).setNegativeButton("Закрыть",null).show();\n    }\n\n    private void openSystemSettings() {
+    private void openLauncherSettings() {
+        String[] options={"Выбрать VPN-клиент (все приложения)","Управление избранным","Обновить список приложений","Назначить MY BOX главным экраном"};
+        new AlertDialog.Builder(this).setTitle("Настройки MY BOX").setItems(options,(dialog,which)->{
+            if(which==0) chooseVpn();
+            else if(which==1) showAppPicker();
+            else if(which==2){loadApps();refreshContent();updateStatuses();Toast.makeText(this,"Список приложений обновлён",Toast.LENGTH_SHORT).show();}
+            else if(which==3) openHomeSettings();
+        }).setNegativeButton("Закрыть",null).show();
+    }
+
+    private void openSystemSettings() {
         try{startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));}
         catch(Exception e){Toast.makeText(this,"Системные настройки недоступны",Toast.LENGTH_SHORT).show();}
     }
