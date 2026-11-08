@@ -37,6 +37,36 @@ jobs:
       - name: Build all DPI variants
         run: gradle --no-daemon assembleDebug
 
+      - name: Create explicit Android signing key
+        shell: bash
+        run: |
+          set -euo pipefail
+          keytool -genkeypair -noprompt \
+            -keystore "$RUNNER_TEMP/mybox-release.jks" \
+            -storepass mybox-ci-signing-password \
+            -keypass mybox-ci-signing-password \
+            -alias mybox \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=MY BOX Launcher, OU=Android, O=MY BOX, L=Unknown, ST=Unknown, C=US"
+
+      - name: Re-sign APKs with explicit v1 and v2 signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          for apk in app/build/outputs/apk/*/debug/*.apk; do
+            "$APKSIGNER" sign \
+              --ks "$RUNNER_TEMP/mybox-release.jks" \
+              --ks-pass pass:mybox-ci-signing-password \
+              --key-pass pass:mybox-ci-signing-password \
+              --ks-key-alias mybox \
+              --v1-signing-enabled true \
+              --v2-signing-enabled true \
+              --v3-signing-enabled false \
+              --v4-signing-enabled false \
+              "$apk"
+          done
+
       - name: Validate APK structure, manifest, alignment and signature
         id: validate
         shell: bash
