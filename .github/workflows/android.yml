@@ -38,6 +38,7 @@ jobs:
         run: gradle --no-daemon assembleDebug
 
       - name: Validate APK structure, manifest, alignment and signature
+        id: validate
         shell: bash
         run: |
           set -euo pipefail
@@ -58,10 +59,10 @@ jobs:
             test -s "$apk"
             unzip -t "$apk"
             badging="$("$AAPT" dump badging "$apk")"
-            printf '%s\\n' "$badging"
-            printf '%s\\n' "$badging" | grep -q "^sdkVersion:'23'$"
-            printf '%s\\n' "$badging" | grep -q "^targetSdkVersion:'28'$"
-            "$APKSIGNER" verify --verbose "$apk"
+            echo "$badging"
+            grep -q "^sdkVersion:'23'$" <<< "$badging"
+            grep -q "^targetSdkVersion:'28'$" <<< "$badging"
+            "$APKSIGNER" verify --verbose --print-certs "$apk"
             "$ZIPALIGN" -c -v 4 "$apk"
           done
 
@@ -73,13 +74,28 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           script: |
-            for apk in app/build/outputs/apk/*/debug/*.apk; do
-              echo "===== Installing $apk on API 28 ====="
-              adb install -r "$apk"
-            done
-            adb shell pm list packages | grep 'com.mybox.launcher'
+            set -eu
+            adb start-server
+            adb wait-for-device
+            echo "Emulator boot property:"
+            adb shell getprop sys.boot_completed
 
-      - name: Upload verified APK variants
+            echo "===== Installing ByeByeDPI ====="
+            adb install -r app/build/outputs/apk/byeByeDpi/debug/app-byeByeDpi-debug.apk
+            adb shell pm path com.mybox.launcher.byebyedpi
+
+            echo "===== Installing ZapretDroid ====="
+            adb install -r app/build/outputs/apk/zapretDroid/debug/app-zapretDroid-debug.apk
+            adb shell pm path com.mybox.launcher.zapretdroid
+
+            echo "===== Installing ByeZapret ====="
+            adb install -r app/build/outputs/apk/byeZapret/debug/app-byeZapret-debug.apk
+            adb shell pm path com.mybox.launcher.byezapret
+
+            echo "All three APKs installed successfully on Android 9."
+
+      - name: Upload APKs for inspection or installation
+        if: always() && steps.validate.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: my-box-dpi-variants
