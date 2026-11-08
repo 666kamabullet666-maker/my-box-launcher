@@ -4,17 +4,20 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.content.Intent;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private final int background = Color.rgb(16, 17, 20);
     private final int surface = Color.rgb(31, 33, 38);
     private final int foreground = Color.rgb(245, 245, 245);
     private final int muted = Color.rgb(155, 160, 170);
+    private TextView dpiStatus;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,6 +31,15 @@ public class MainActivity extends Activity {
         setContentView(buildHome());
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (dpiStatus != null) {
+            boolean installed = getPackageManager().getLaunchIntentForPackage(BuildConfig.DPI_PACKAGE) != null;
+            dpiStatus.setText(installed ? "Приложение установлено • запуск доступен" : "Не установлено • требуется установка APK");
+        }
+    }
+
     private View buildHome() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -38,38 +50,58 @@ public class MainActivity extends Activity {
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setOrientation(LinearLayout.HORIZONTAL);
-
         TextView brand = text("MY BOX", 28, foreground, true);
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-
-        TextView status = text("VPN     Wi-Fi     Bluetooth", 14, muted, false);
-        header.addView(status);
+        header.addView(text("VPN     Wi-Fi     Bluetooth", 14, muted, false));
         root.addView(header);
 
-        TextView date = text("ВАШ ТЕЛЕВИЗОР. ВАШИ ПРАВИЛА.", 13, muted, true);
-        LinearLayout.LayoutParams dateParams = new LinearLayout.LayoutParams(-2, -2);
-        dateParams.topMargin = dp(42);
-        root.addView(date, dateParams);
+        TextView tagline = text("ВАШ ТЕЛЕВИЗОР. ВАШИ ПРАВИЛА.", 13, muted, true);
+        LinearLayout.LayoutParams taglineParams = new LinearLayout.LayoutParams(-2, -2);
+        taglineParams.topMargin = dp(32);
+        root.addView(tagline, taglineParams);
 
-        LinearLayout tiles = new LinearLayout(this);
-        tiles.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams tilesParams = new LinearLayout.LayoutParams(-1, dp(150));
-        tilesParams.topMargin = dp(22);
-        root.addView(tiles, tilesParams);
+        TextView engine = text(BuildConfig.DPI_TITLE, 23, foreground, true);
+        LinearLayout.LayoutParams engineParams = new LinearLayout.LayoutParams(-2, -2);
+        engineParams.topMargin = dp(18);
+        root.addView(engine, engineParams);
 
-        addTile(tiles, "Приложения", "Все установленные приложения", true);
-        addTile(tiles, "Избранное", "Быстрый доступ", false);
-        addTile(tiles, "Настройки", "Оформление и система", false);
+        TextView description = text(BuildConfig.DPI_DESCRIPTION, 13, muted, false);
+        description.setMaxWidth(dp(850));
+        description.setLineSpacing(dp(3), 1.0f);
+        LinearLayout.LayoutParams descParams = new LinearLayout.LayoutParams(-1, -2);
+        descParams.topMargin = dp(8);
+        root.addView(description, descParams);
 
-        TextView footer = text("MY BOX  •  ЛЁГКИЙ. БЫСТРЫЙ. ТВОЙ.", 11, muted, false);
-        LinearLayout.LayoutParams footerParams = new LinearLayout.LayoutParams(-2, -2);
-        footerParams.topMargin = dp(38);
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams controlsParams = new LinearLayout.LayoutParams(-1, dp(118));
+        controlsParams.topMargin = dp(22);
+        root.addView(controls, controlsParams);
+
+        LinearLayout dpiTile = tile("DPI • ЗАПУСТИТЬ", "Открыть выбранный движок", true);
+        dpiTile.setOnClickListener(v -> launchDpi());
+        controls.addView(dpiTile, new LinearLayout.LayoutParams(0, -1, 1));
+
+        LinearLayout vpnTile = tile("VPN", "Назначение приложения — в настройках", false);
+        vpnTile.setOnClickListener(v -> Toast.makeText(this,
+                "Выбор VPN-приложения добавим в настройках", Toast.LENGTH_SHORT).show());
+        LinearLayout.LayoutParams vpnParams = new LinearLayout.LayoutParams(0, -1, 1);
+        vpnParams.leftMargin = dp(14);
+        controls.addView(vpnTile, vpnParams);
+
+        dpiStatus = text("Проверка приложения…", 12, muted, false);
+        LinearLayout.LayoutParams statusParams = new LinearLayout.LayoutParams(-1, -2);
+        statusParams.topMargin = dp(12);
+        root.addView(dpiStatus, statusParams);
+
+        TextView footer = text("DPI работает локально через Android VpnService. Это не VPN-сервер и не смена IP.", 11, muted, false);
+        LinearLayout.LayoutParams footerParams = new LinearLayout.LayoutParams(-1, -2);
+        footerParams.topMargin = dp(26);
         root.addView(footer, footerParams);
-
         return root;
     }
 
-    private void addTile(LinearLayout parent, String title, String subtitle, boolean focused) {
+    private LinearLayout tile(String title, String subtitle, boolean focused) {
         LinearLayout tile = new LinearLayout(this);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER_VERTICAL);
@@ -77,17 +109,28 @@ public class MainActivity extends Activity {
         tile.setBackgroundColor(focused ? Color.rgb(53, 56, 64) : surface);
         tile.setFocusable(true);
         tile.setFocusableInTouchMode(true);
-
-        TextView heading = text(title, 19, foreground, true);
+        tile.addView(text(title, 18, foreground, true));
         TextView detail = text(subtitle, 12, muted, false);
-        LinearLayout.LayoutParams detailParams = new LinearLayout.LayoutParams(-1, -2);
-        detailParams.topMargin = dp(9);
-        tile.addView(heading);
-        tile.addView(detail, detailParams);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.topMargin = dp(8);
+        tile.addView(detail, p);
+        return tile;
+    }
 
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -1, 1);
-        params.setMargins(dp(0), 0, dp(14), 0);
-        parent.addView(tile, params);
+    private void launchDpi() {
+        Intent launch = getPackageManager().getLaunchIntentForPackage(BuildConfig.DPI_PACKAGE);
+        if (launch == null) {
+            Toast.makeText(this, BuildConfig.DPI_TITLE + ": приложение не установлено", Toast.LENGTH_LONG).show();
+            dpiStatus.setText("Не установлено • установите APK движка DPI");
+            return;
+        }
+        try {
+            launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(launch);
+            Toast.makeText(this, BuildConfig.DPI_TITLE + ": приложение открыто", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Не удалось открыть " + BuildConfig.DPI_TITLE, Toast.LENGTH_LONG).show();
+        }
     }
 
     private TextView text(String value, int size, int color, boolean bold) {
