@@ -37,19 +37,19 @@ jobs:
       - name: Build all DPI variants
         run: gradle --no-daemon assembleDebug
 
-      - name: Create explicit Android signing key
+      - name: Create CI test signing key
         shell: bash
         run: |
           set -euo pipefail
           keytool -genkeypair -noprompt \
-            -keystore "$RUNNER_TEMP/mybox-release.jks" \
+            -keystore "$RUNNER_TEMP/mybox-ci-test.jks" \
             -storepass mybox-ci-signing-password \
             -keypass mybox-ci-signing-password \
             -alias mybox \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=MY BOX Launcher, OU=Android, O=MY BOX, L=Unknown, ST=Unknown, C=US"
 
-      - name: Re-sign APKs with explicit v1 and v2 signatures
+      - name: Sign all variants with v1, v2 and v3 signatures
         shell: bash
         run: |
           set -euo pipefail
@@ -62,7 +62,7 @@ jobs:
               --ks-key-alias mybox \
               --v1-signing-enabled true \
               --v2-signing-enabled true \
-              --v3-signing-enabled false \
+              --v3-signing-enabled true \
               --v4-signing-enabled false \
               "$apk"
           done
@@ -92,7 +92,18 @@ jobs:
             echo "$badging"
             grep -q "^sdkVersion:'23'$" <<< "$badging"
             grep -q "^targetSdkVersion:'28'$" <<< "$badging"
-            "$APKSIGNER" verify --verbose --print-certs "$apk"
+            signature_report="$("$APKSIGNER" verify --verbose --print-certs "$apk")"
+            echo "$signature_report"
+            grep -q "Verified using v1 scheme (JAR signing): true" <<< "$signature_report"
+            grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" <<< "$signature_report"
+            grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" <<< "$signature_report"
+            if unzip -Z1 "$apk" | grep -q '^lib/'; then
+              echo "Native libraries found in $apk:"
+              unzip -Z1 "$apk" | grep '^lib/'
+            else
+              echo "No native libraries: ABI-specific packaging is not required."
+            fi
+            sha256sum "$apk"
             "$ZIPALIGN" -c -v 4 "$apk"
           done
 
@@ -125,7 +136,7 @@ jobs:
             echo "All three APKs installed successfully on Android 9."
 
       - name: Upload APKs for inspection or installation
-        if: always() && steps.validate.outcome == 'success'
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: my-box-dpi-variants
