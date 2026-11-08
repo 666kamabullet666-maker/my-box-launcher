@@ -244,6 +244,22 @@ public class MainActivity extends Activity {
         catch(Exception e){return "не установлен";}
     }
 
+    private void openHomeSettings() {
+        try {
+            Intent intent = new Intent("android.settings.HOME_SETTINGS");
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception first) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_MAIN);
+                intent.addCategory(Intent.CATEGORY_HOME);
+                startActivity(intent);
+            } catch (Exception second) {
+                Toast.makeText(this, "Откройте системные настройки и выберите MY BOX как приложение Главный экран", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
     private void focusStyle(View v) {
         v.setOnFocusChangeListener((view,focused)->view.setBackground(panel(
             focused?Color.rgb(46,76,145):PANEL,dp(16),
