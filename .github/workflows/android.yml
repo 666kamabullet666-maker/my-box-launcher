@@ -73,7 +73,6 @@ jobs:
           profile: tv_1080p
           disable-animations: true
           script: |
-            set -euo pipefail
             for apk in app/build/outputs/apk/*/debug/*.apk; do
               echo "===== Installing $apk on API 28 ====="
               adb install -r "$apk"
