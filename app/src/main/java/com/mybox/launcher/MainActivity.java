@@ -135,7 +135,7 @@ public class MainActivity extends Activity {
         LinearLayout right = row();
         LinearLayout.LayoutParams rp = params(-2,-2); rp.leftMargin=dp(26); header.addView(right,rp);
         right.addView(label("◉",22,Color.rgb(80,180,255),true));
-        TextView settings=label("  ⚙",25,TEXT,true); settings.setFocusable(true); settings.setOnClickListener(v->openSystemSettings()); focusStyle(settings); right.addView(settings);
+        TextView settings=label("  ⚙",25,TEXT,true); settings.setFocusable(true); settings.setContentDescription("Настройки MY BOX"); settings.setOnClickListener(v->openLauncherSettings()); focusStyle(settings); right.addView(settings);
         LinearLayout timeBox=new LinearLayout(this); timeBox.setOrientation(LinearLayout.VERTICAL); timeBox.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams tb=params(-2,-2);tb.leftMargin=dp(22);right.addView(timeBox,tb);
         clock=label("--:--",23,TEXT,true);date=label("",11,MUTED,false);timeBox.addView(clock);timeBox.addView(date);
@@ -158,7 +158,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams h5=new LinearLayout.LayoutParams(dp(190),-1);h5.leftMargin=dp(14);hero.addView(tools,h5);
         TextView all=actionTile("▦","Все приложения  ›");all.setOnClickListener(v->{showAll=true;refreshContent();});
         tools.addView(all,new LinearLayout.LayoutParams(-1,0,1));
-        TextView sys=actionTile("⚙","Настройки  ›");sys.setOnClickListener(v->openSystemSettings());
+        TextView sys=actionTile("⚙","Настройки Android  ›");sys.setOnClickListener(v->openSystemSettings());
         LinearLayout.LayoutParams sysP=new LinearLayout.LayoutParams(-1,0,1);sysP.topMargin=dp(10);tools.addView(sys,sysP);
 
         LinearLayout status=row();LinearLayout.LayoutParams st=params(-1,-2);st.topMargin=dp(14);root.addView(status,st);
@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
         LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setGravity(Gravity.CENTER);
         box.setPadding(dp(12),dp(12),dp(12),dp(12));box.setBackground(gradient(Color.rgb(18,27,61),Color.rgb(42,65,128),dp(18)));
         box.setFocusable(true);box.setClickable(true);
-        if(found!=null){ImageView icon=new ImageView(this);icon.setImageDrawable(found.icon);box.addView(icon,params(dp(66),dp(66)));}
+        if(found!=null){ImageView icon=new ImageView(this);icon.setImageDrawable(found.icon);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);box.addView(icon,params(dp(66),dp(66)));}
         else box.addView(label("▶",46,Color.WHITE,true));
         TextView name=label(title,20,TEXT,true);name.setGravity(Gravity.CENTER);LinearLayout.LayoutParams np=params(-1,-2);np.topMargin=dp(10);box.addView(name,np);
         TextView sub=label(subtitle,12,MUTED,false);sub.setGravity(Gravity.CENTER);box.addView(sub);
@@ -237,7 +237,7 @@ public class MainActivity extends Activity {
         LinearLayout card=new LinearLayout(this);card.setOrientation(LinearLayout.VERTICAL);card.setGravity(Gravity.CENTER);
         card.setPadding(dp(8),dp(6),dp(8),dp(6));card.setBackground(panel(PANEL,dp(14),Color.rgb(45,64,112),dp(1)));
         card.setFocusable(true);card.setClickable(true);
-        ImageView icon=new ImageView(this);icon.setImageDrawable(app.icon);card.addView(icon,params(dp(43),dp(43)));
+        ImageView icon=new ImageView(this);icon.setImageDrawable(app.icon);icon.setScaleType(ImageView.ScaleType.FIT_CENTER);card.addView(icon,params(dp(43),dp(43)));
         TextView name=label(app.label,12,TEXT,true);name.setGravity(Gravity.CENTER);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams np=params(-1,-2);np.topMargin=dp(5);card.addView(name,np);
         card.setOnClickListener(v->launchIntent(app.launchIntent,app.label));
@@ -264,15 +264,23 @@ public class MainActivity extends Activity {
     private AppEntry findPackage(String pkg){for(AppEntry a:apps)if(a.packageName.equals(pkg))return a;return null;}
 
     private void chooseVpn() {
+        // Не фильтруем по словам VPN: клиенты вроде HAP/Happ могут называться иначе.
+        // Показываем все установленные приложения, у которых есть Activity запуска.
         List<AppEntry> candidates=new ArrayList<>();
-        for(AppEntry a:apps){String s=(a.label+" "+a.packageName).toLowerCase(Locale.ROOT);
-            if(s.contains("vpn")||s.contains("wireguard")||s.contains("openvpn")||s.contains("v2ray")||s.contains("sing")||
-                    s.contains("hiddify")||s.contains("nekobox")||s.contains("outline")||s.contains("clash")||
-                    s.contains("amnezia")||s.contains("1.1.1.1"))candidates.add(a);}
-        if(candidates.isEmpty())candidates.addAll(apps);
+        PackageManager pm=getPackageManager();
+        for(android.content.pm.ApplicationInfo info:pm.getInstalledApplications(0)){
+            String pkg=info.packageName;
+            if(pkg.equals(getPackageName())) continue;
+            Intent launch=pm.getLaunchIntentForPackage(pkg);
+            if(launch==null) continue;
+            String title=pm.getApplicationLabel(info).toString();
+            try { candidates.add(new AppEntry(title,pkg,pm.getApplicationIcon(info),launch)); }
+            catch(Exception ignored) { }
+        }
+        Collections.sort(candidates,Comparator.comparing(a->a.label.toLowerCase(Locale.ROOT)));
         String[] names=new String[candidates.size()+1];names[0]="Сбросить выбор";
-        for(int i=0;i<candidates.size();i++)names[i+1]=candidates.get(i).label;
-        new AlertDialog.Builder(this).setTitle("Выбрать VPN-клиент").setItems(names,(d,w)->{
+        for(int i=0;i<candidates.size();i++)names[i+1]=candidates.get(i).label+"  ·  "+candidates.get(i).packageName;
+        new AlertDialog.Builder(this).setTitle("Выбрать VPN-клиент или HAP").setItems(names,(d,w)->{
             if(w==0)getSharedPreferences(PREFS,0).edit().remove(VPN_PACKAGE).apply();
             else getSharedPreferences(PREFS,0).edit().putString(VPN_PACKAGE,candidates.get(w-1).packageName).apply();
             updateStatuses();
@@ -306,7 +314,7 @@ public class MainActivity extends Activity {
         catch(Exception e){return "не установлен";}
     }
 
-    private void openSystemSettings() {
+    private void openLauncherSettings() {\n        String[] options={"Выбрать VPN-приложение","Управление избранным","Обновить список приложений","Назначить MY BOX главным экраном"};\n        new AlertDialog.Builder(this).setTitle("Настройки MY BOX").setItems(options,(dialog,which)->{\n            if(which==0) chooseVpn();\n            else if(which==1) showAppPicker();\n            else if(which==2){loadApps();refreshContent();updateStatuses();Toast.makeText(this,"Список приложений обновлён",Toast.LENGTH_SHORT).show();}\n            else if(which==3) openHomeSettings();\n        }).setNegativeButton("Закрыть",null).show();\n    }\n\n    private void openSystemSettings() {
         try{startActivity(new Intent(android.provider.Settings.ACTION_SETTINGS));}
         catch(Exception e){Toast.makeText(this,"Системные настройки недоступны",Toast.LENGTH_SHORT).show();}
     }
