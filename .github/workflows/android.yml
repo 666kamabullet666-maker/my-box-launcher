@@ -1,4 +1,4 @@
-name: Build MY BOX APK
+name: Build MY BOX DPI variants
 
 on:
   workflow_dispatch:
@@ -32,13 +32,13 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Build debug APK
+      - name: Build all DPI variants
         run: gradle --no-daemon assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK variants
         uses: actions/upload-artifact@v4
         with:
-          name: my-box-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: my-box-dpi-variants
+          path: app/build/outputs/apk/*/debug/*.apk
           if-no-files-found: error
           retention-days: 14
