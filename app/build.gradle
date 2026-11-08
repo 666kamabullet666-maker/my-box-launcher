@@ -10,8 +10,43 @@ android {
         applicationId 'com.mybox.launcher'
         minSdk 23
         targetSdk 28
-        versionCode 1
-        versionName '0.1.0'
+        versionCode 2
+        versionName '0.2.0'
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    flavorDimensions 'dpiEngine'
+    productFlavors {
+        byeByeDpi {
+            dimension 'dpiEngine'
+            applicationIdSuffix '.byebyedpi'
+            versionNameSuffix '-ByeByeDPI'
+            buildConfigField 'String', 'DPI_PACKAGE', '"io.github.romanvht.byedpi"'
+            buildConfigField 'String', 'DPI_TITLE', '"ByeByeDPI"'
+            buildConfigField 'String', 'DPI_DESCRIPTION', '"Локальный ByeDPI через Android VpnService. Настраиваемые параметры, списки стратегий и совместимость с Android TV/BOX."'
+            resValue 'string', 'app_name', 'MY BOX • ByeByeDPI'
+        }
+        zapretDroid {
+            dimension 'dpiEngine'
+            applicationIdSuffix '.zapretdroid'
+            versionNameSuffix '-ZapretDroid'
+            buildConfigField 'String', 'DPI_PACKAGE', '"com.zapret.droid"'
+            buildConfigField 'String', 'DPI_TITLE', '"ZapretDroid"'
+            buildConfigField 'String', 'DPI_DESCRIPTION', '"Порт стратегий Flowseal: General, ALT, Fake TLS и UDP/QUIC. Локальный VpnService, без root; эффективность зависит от сети."'
+            resValue 'string', 'app_name', 'MY BOX • ZapretDroid'
+        }
+        byeZapret {
+            dimension 'dpiEngine'
+            applicationIdSuffix '.byezapret'
+            versionNameSuffix '-ByeZapret'
+            buildConfigField 'String', 'DPI_PACKAGE', '"io.github.zapretdroid"'
+            buildConfigField 'String', 'DPI_TITLE', '"ByeZapret"'
+            buildConfigField 'String', 'DPI_DESCRIPTION', '"Расширенный движок ByeDPI + hev-socks5-tunnel: подбор стратегий, zapret-style техники, DoH/DoT и гибкая маршрутизация. Без root."'
+            resValue 'string', 'app_name', 'MY BOX • ByeZapret'
+        }
     }
 
     compileOptions {
