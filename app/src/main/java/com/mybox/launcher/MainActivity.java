@@ -112,7 +112,14 @@ public class MainActivity extends Activity {
         LinearLayout header = row();
         TextView brand = label("MY BOX", 30, TEXT, true);
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        header.addView(label("ANDROID TV  •  " + android.os.Build.VERSION.RELEASE, 13, MUTED, true));
+        TextView setHome=label("НАЗНАЧИТЬ HOME",12,TEXT,true);
+        setHome.setPadding(dp(14),dp(10),dp(14),dp(10));
+        setHome.setBackground(panel(PANEL,dp(12),Color.rgb(65,100,165),dp(1)));
+        setHome.setFocusable(true);
+        setHome.setOnClickListener(v -> openHomeSettings());
+        header.addView(setHome);
+        LinearLayout.LayoutParams versionParams=params(-2,-2); versionParams.leftMargin=dp(18);
+        header.addView(label("ANDROID TV  •  " + android.os.Build.VERSION.RELEASE, 12, MUTED, true),versionParams);
         root.addView(header);
 
         TextView tagline = label("ПОДКЛЮЧАЙСЯ. СМОТРИ. ИСПОЛЬЗУЙ.", 13, MUTED, true);
