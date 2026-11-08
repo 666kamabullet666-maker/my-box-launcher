@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         if (dpiStatus != null) updateStatuses();
-        if (appGrid != null) refreshApps();
+        if (appGrid != null) { loadApps(); refreshApps(); }
     }
 
     private void loadApps() {
