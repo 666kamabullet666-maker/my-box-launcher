@@ -56,7 +56,7 @@ jobs:
           APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           for apk in app/build/outputs/apk/*/debug/*.apk; do
             "$APKSIGNER" sign \
-              --ks "$RUNNER_TEMP/mybox-release.jks" \
+              --ks "$RUNNER_TEMP/mybox-ci-test.jks" \
               --ks-pass pass:mybox-ci-signing-password \
               --key-pass pass:mybox-ci-signing-password \
               --ks-key-alias mybox \
@@ -92,6 +92,10 @@ jobs:
             echo "$badging"
             grep -q "^sdkVersion:'23'$" <<< "$badging"
             grep -q "^targetSdkVersion:'28'$" <<< "$badging"
+            if grep -q "^testOnly:'true'$" <<< "$badging"; then
+              echo "Refusing to publish a testOnly APK."
+              exit 1
+            fi
             signature_report="$("$APKSIGNER" verify --verbose --print-certs "$apk")"
             echo "$signature_report"
             grep -q "Verified using v1 scheme (JAR signing): true" <<< "$signature_report"
